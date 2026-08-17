@@ -1,0 +1,111 @@
+-- =====================================================================
+-- シーシャバー「ひふみ」店舗管理サブシステム
+-- スキーマ定義 (Version 1.0 FIX)
+-- 対応ドキュメント: docs/02_データベース設計書.pdf 5章
+--
+-- 実行方法: Supabase ダッシュボード > SQL Editor に貼り付けて実行
+-- =====================================================================
+
+-- 拡張(gen_random_uuid用)
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+
+-- ---------------------------------------------------------------------
+-- マスタ系
+-- ---------------------------------------------------------------------
+
+-- 卓マスタ。ダッシュボードの描画座標を保持する。
+CREATE TABLE tables (
+  id            SERIAL PRIMARY KEY,
+  table_number  INTEGER     NOT NULL UNIQUE,
+  label         VARCHAR(20) NOT NULL,
+  capacity      INTEGER,
+  pos_x         INTEGER     NOT NULL,  -- 基準キャンバス450x490上の座標
+  pos_y         INTEGER     NOT NULL,
+  is_active     BOOLEAN     NOT NULL DEFAULT true
+);
+
+-- スタッフマスタ。V1では権限差を設けない。
+CREATE TABLE staff (
+  id            SERIAL PRIMARY KEY,
+  login_id      VARCHAR(50)  NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,  -- bcryptハッシュ。平文を入れないこと
+  name          VARCHAR(100) NOT NULL,
+  is_active     BOOLEAN      NOT NULL DEFAULT true
+);
+
+-- 商品マスタ。シーシャは「プラン」を1商品として扱い、フレーバーは口頭で受ける。
+--
+-- 【価格の扱い】price は「税込価格」を保持する。店頭メニューが総額表示であり、
+-- 税抜で保持して表示時に税込へ換算すると端数処理で printed menu と1円ずれる
+-- ケースがあるため(例: 税込1,000円は floor(b*1.1) では表現できない)。
+-- 表示はこの値をそのまま出す。税額の内訳計算は本システムの対象外(レジ側の責務)。
+CREATE TABLE products (
+  id          SERIAL PRIMARY KEY,
+  name        VARCHAR(100)  NOT NULL,
+  category    VARCHAR(50)   NOT NULL,   -- 画面のタブ(シーシャ/コーヒー・ティー/…)
+  subcategory VARCHAR(50),              -- タブ内の見出し(Coffee/Tea/焼酎ベース/…)
+  price       INTEGER       NOT NULL CHECK (price >= 0),   -- 税込
+  is_sold_out BOOLEAN       NOT NULL DEFAULT false,
+  sort_order  INTEGER       NOT NULL DEFAULT 0
+);
+
+
+-- ---------------------------------------------------------------------
+-- トランザクション系
+-- ---------------------------------------------------------------------
+
+-- 伝票。開栓のたびに1レコード作成され、session_tokenが再発行される。
+CREATE TABLE orders (
+  id                SERIAL PRIMARY KEY,
+  table_id          INTEGER     NOT NULL REFERENCES tables(id),
+  session_token     UUID        NOT NULL DEFAULT gen_random_uuid(),
+  status            VARCHAR(20) NOT NULL DEFAULT 'Active'
+                    CHECK (status IN ('Active','Deactivated')),
+  checkout_staff_id INTEGER     REFERENCES staff(id),  -- 日次バッチ由来のクリアはNULLのまま
+  is_calling        BOOLEAN     NOT NULL DEFAULT false,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  closed_at         TIMESTAMPTZ
+);
+
+-- 同一卓にActiveな伝票を1件しか作れないようにする(開栓の二重実行防止)
+CREATE UNIQUE INDEX orders_one_active_per_table
+  ON orders (table_id) WHERE status = 'Active';
+
+CREATE INDEX orders_status_idx ON orders (status);
+
+-- 注文明細。価格(税込)は注文時点の値をスナップショットとして保持する。
+CREATE TABLE order_items (
+  id          SERIAL PRIMARY KEY,
+  order_id    INTEGER      NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  product_id  INTEGER      REFERENCES products(id),  -- 手入力時はNULL
+  is_custom   BOOLEAN      NOT NULL DEFAULT false,
+  custom_name VARCHAR(100),
+  price       INTEGER      NOT NULL CHECK (price >= 0),   -- 税込。注文時点のスナップショット
+  quantity    INTEGER      NOT NULL DEFAULT 1 CHECK (quantity > 0),
+  status      VARCHAR(20)  NOT NULL DEFAULT 'pending'
+              CHECK (status IN ('pending','served','cancelled')),
+  created_at  TIMESTAMPTZ  NOT NULL DEFAULT now(),
+  -- 通常商品ならproduct_id必須、カスタムならcustom_name必須
+  CONSTRAINT order_items_source_chk CHECK (
+    (is_custom = false AND product_id  IS NOT NULL)
+    OR
+    (is_custom = true  AND custom_name IS NOT NULL)
+  )
+);
+
+CREATE INDEX order_items_order_status_idx ON order_items (order_id, status);
+
+
+-- ---------------------------------------------------------------------
+-- 行レベルセキュリティ(RLS)
+--
+-- RLSを有効化したうえでポリシーを一切作成しないことで、
+-- Anon Key / Authenticated Key からのアクセスは全て拒否される。
+-- Service Role Key はRLSをbypassするため、Backendのみが通過できる。
+-- ---------------------------------------------------------------------
+ALTER TABLE tables      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE staff       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE products    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE orders      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;

@@ -1,0 +1,31 @@
+# 環境変数・秘密情報(絶対にコミットしない)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# 依存関係
+node_modules/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# ビルド成果物
+dist/
+build/
+.vite/
+
+# OS・エディタ
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+
+# 一時ファイル
+_*.png
+_*.txt
+*.tmp
