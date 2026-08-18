@@ -505,6 +505,57 @@
     border-radius: var(--r-md);
   }
 
+  /* call banner: TOPから呼び出しを見逃さないための帯 */
+  .call-banner {
+    display: none;
+    margin-bottom: 18px;
+    border: 1px solid var(--alarm-dim);
+    border-radius: var(--r-lg);
+    background: rgba(242,100,92,.05);
+    overflow: hidden;
+  }
+  .call-banner-head {
+    padding: 10px 14px;
+    font-size: 12px; font-weight: 700; color: var(--alarm);
+    border-bottom: 1px solid var(--alarm-dim);
+  }
+  .call-banner-list { display: flex; flex-direction: column; }
+  .callrow {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--alarm-dim);
+    font-size: 12.5px;
+  }
+  .callrow:last-child { border-bottom: none; }
+  .callrow-table { font-family: var(--font-mono); font-weight: 700; flex: none; width: 30px; }
+  .callrow-reason { flex: 1; min-width: 0; color: var(--text-2); }
+  .callrow-time {
+    font-family: var(--font-mono); font-size: 11px; color: var(--muted); flex: none;
+  }
+  .callrow-warn { background: rgba(242,100,92,.13); }
+  .callrow-warn .callrow-time { color: var(--alarm); font-weight: 600; }
+  .callrow-urgent { background: rgba(242,100,92,.24); }
+  .callrow-urgent .callrow-table,
+  .callrow-urgent .callrow-time { color: var(--alarm); font-weight: 700; }
+
+  /* ポーリング状態の表示(非表示時に止まることを目で見て確認するため) */
+  .poll-status {
+    display: flex; align-items: center; gap: 7px;
+    margin-top: 10px; padding: 0 3px;
+    font-family: var(--font-mono); font-size: 10px; color: var(--muted);
+  }
+  .poll-dot { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+  .poll-dot.on  { background: var(--jade); }
+  .poll-dot.off { background: var(--muted); }
+
+  .price-input {
+    width: 82px; flex: none; text-align: right;
+    background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: var(--r-sm); padding: 6px 8px; font-size: 12.5px;
+    color: var(--text); font-family: var(--font-mono);
+  }
+  .price-input:focus { border-color: var(--ember); outline: none; }
+
   /* ---------------------------------------------------- modal ------- */
   .backdrop {
     position: fixed; inset: 0; background: rgba(6,5,4,.72);
@@ -618,6 +669,52 @@
     height: 100dvh;
   }
 
+  /* ------------------------------------------------- 空席状況(単独) ----
+     ?vacancy=1 で開いたとき。認証不要の公開ページ(PUB-001)を再現する。
+     他の画面とは完全に独立させ、トップバー等は一切出さない。 */
+  #vacancy-standalone { display: none; }
+  body.vacancy-mode .topbar,
+  body.vacancy-mode .scenario,
+  body.vacancy-mode .viewtabs,
+  body.vacancy-mode .workspace,
+  body.vacancy-mode footer.credit { display: none; }
+  body.vacancy-mode .shell { padding: 0; max-width: none; }
+  body.vacancy-mode #vacancy-standalone {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100dvh; padding: 24px 16px;
+  }
+
+  .vacancy-card {
+    width: 100%; max-width: 420px;
+    background: var(--surface); border: 1px solid var(--line-soft);
+    border-radius: var(--r-lg); padding: 22px 20px;
+    box-shadow: 0 18px 44px rgba(0,0,0,.4);
+  }
+  .vacancy-title {
+    font-size: 16px; font-weight: 600; margin-bottom: 4px;
+  }
+  .vacancy-summary {
+    font-size: 12.5px; color: var(--text-2);
+    padding-bottom: 14px; margin-bottom: 10px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .vacancy-list { display: flex; flex-direction: column; gap: 1px; }
+  .vrow {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 2px; border-bottom: 1px solid var(--line-soft);
+    font-size: 13px;
+  }
+  .vrow:last-child { border-bottom: none; }
+  .vrow-label { font-family: var(--font-mono); font-weight: 700; width: 30px; flex: none; }
+  .vrow-cap { color: var(--muted); flex: 1; font-size: 12px; }
+  .vrow-state { font-size: 12.5px; font-weight: 600; flex: none; }
+  .vrow-state.free { color: var(--jade); }
+  .vrow-state.occ  { color: var(--muted); }
+  .vacancy-foot {
+    margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line-soft);
+    font-size: 10.5px; color: var(--muted); text-align: center;
+  }
+
   /* --------------------------------------------------- responsive ----
      基本定義より後ろに置き、カスケードで確実に勝たせる。            */
   @media (max-width: 940px) {
@@ -641,6 +738,7 @@
       <span class="brand-sub">プロトタイプ</span>
     </div>
     <div class="topbar-spacer"></div>
+    <button class="btn btn-ghost" id="btn-vacancy">🔎 空席状況(外部公開プレビュー)</button>
     <button class="btn btn-ghost" id="btn-reset">最初から</button>
   </div>
 
@@ -674,12 +772,13 @@
       <div class="pane-label">
         <span class="eyebrow">スタッフ — タブレット</span>
       </div>
+      <div class="call-banner" id="call-banner"></div>
       <div class="console">
         <div class="console-head">
           <span class="console-title">卓ダッシュボード</span>
           <div class="topbar-spacer"></div>
           <button class="btn" id="btn-custom">手入力</button>
-          <button class="btn" id="btn-soldout">品切れ管理</button>
+          <button class="btn" id="btn-soldout">品切れ・価格管理</button>
         </div>
         <div class="console-body">
           <div class="floor-wrap">
@@ -699,6 +798,7 @@
           </div>
         </div>
       </div>
+      <div class="poll-status" id="poll-status"></div>
     </div>
   </div>
 
@@ -712,9 +812,19 @@
 <div id="modal-root"></div>
 <div id="toast-root"></div>
 
+<!-- 空席状況(PUB-001)を単独ページとして開いたとき(?vacancy=1)だけ表示する。
+     通常モードではCSSで非表示にしている。実際の外部公開ページは、これと
+     同じ内容をログイン・QR読取なしで返す想定([03]3.3節)。 -->
+<div id="vacancy-standalone"></div>
+
 <script>
 (function () {
   'use strict';
+
+  // ?vacancy=1 のときは、スタッフ・お客さま向けの内部ポーリングを一切
+  // 起動しない([01]2.5節: 公開ページは他の内部画面と独立させる)。
+  // 判定はスクリプトの一番早い段階で1回だけ行い、以降はこの値を使い回す。
+  var IS_VACANCY_URL = /[?&#]vacancy=1/.test(window.location.search + ' ' + window.location.hash);
 
   // ------------------------------------------------------- 定義 ----
   // 座席座標は 02_データベース設計書 の初期データ(基準 450 x 490)
@@ -834,6 +944,15 @@
 
   // 価格は税込で保持する(店頭メニューが総額表示のため)。表示時の換算は行わない。
 
+  // 呼び出し理由。会話不要な軽い用件はここから選んでもらう(会計もこの一つとして統一する)。
+  var CALL_REASONS = [
+    { id: 'charcoal', icon: '🔥', label: '炭の交換がほしい' },
+    { id: 'drink',    icon: '🥤', label: 'ドリンクのおかわり' },
+    { id: 'checkout', icon: '💳', label: 'お会計' },
+    { id: 'other',    icon: '🙋', label: 'その他でスタッフを呼ぶ' }
+  ];
+  var CALL_REASON_LABEL = CALL_REASONS.reduce(function (m, r) { m[r.id] = r.label; return m; }, {});
+
   // ------------------------------------------------------- 状態 ----
   var S, seq;
 
@@ -844,7 +963,7 @@
         return {
           id: t.id, label: t.label, capacity: t.capacity,
           x: t.x, y: t.y, w: t.w, h: t.h,
-          status: 'empty', isCalling: false, orderId: null, token: null
+          status: 'empty', isCalling: false, callReason: null, callAt: null, orderId: null, token: null
         };
       }),
       products: PRODUCT_SEED.map(function (p) {
@@ -854,7 +973,11 @@
       cart: {},
       phone: { tableId: 1, orderId: null, token: null, view: 'menu', cat: 'シーシャ' },
       modal: null,
-      view: 'phone'
+      view: 'phone',
+      // 案内帯(シナリオ)専用の達成フラグ。一度達成したら「最初から」まで
+      // チェックが外れないようにする(卓の会計クリアや呼出解除で状態が
+      // 元に戻っても、案内としては「経験済み」のままにする)。
+      progress: { activated: false, called: false, cleared: false }
     };
   }
 
@@ -870,6 +993,12 @@
   function now() {
     var d = new Date();
     return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+  function fmtElapsed(ms) {
+    var totalSec = Math.max(0, Math.floor(ms / 1000));
+    var m = Math.floor(totalSec / 60);
+    var s = totalSec % 60;
+    return m > 0 ? (m + '分' + s + '秒') : (s + '秒');
   }
   function tableById(id) {
     for (var i = 0; i < S.tables.length; i++) if (S.tables[i].id === id) return S.tables[i];
@@ -913,6 +1042,9 @@
     t.orderId = seq.order;
     t.token = uuid();
     t.isCalling = false;
+    t.callReason = null;
+    t.callAt = null;
+    S.progress.activated = true;
     // まだ一度も読み取っていない端末だけ、自動で読み取ったことにする。
     // 既に別のセッションを掴んでいる端末は SESSION_EXPIRED を表示させる。
     if (S.phone.tableId === tid && S.phone.orderId === null) syncPhone();
@@ -924,8 +1056,11 @@
     var t = tableById(tid);
     t.status = 'empty';
     t.isCalling = false;
+    t.callReason = null;
+    t.callAt = null;
     t.orderId = null;
     t.token = null;
+    S.progress.cleared = true;
     render();
     toast(t.label + ' を会計クリアしました');
   }
@@ -969,25 +1104,41 @@
     render();
   }
 
-  function callStaff() {
+  function callStaff(reason) {
     var t = tableById(S.phone.tableId);
     t.isCalling = true;
+    t.callReason = reason;
+    t.callAt = Date.now();
+    S.progress.called = true;
     render();
-    toast('スタッフをお呼びしました');
+    toast('スタッフをお呼びしました(' + (CALL_REASON_LABEL[reason] || 'その他') + ')');
+  }
+
+  function clearCall(tid) {
+    var t = tableById(tid);
+    t.isCalling = false;
+    t.callReason = null;
+    t.callAt = null;
+    render();
+    toast(t.label + ' の呼び出しに対応しました');
   }
 
   // ------------------------------------------------------- 描画 ----
   function renderScenario() {
-    var anyActive = S.tables.some(function (t) { return t.status === 'active'; });
+    // 「今その状態の卓があるか」ではなく「このセッション中に一度でも
+    // 経験したか」を表示する。そうしないと、卓を会計クリアした瞬間に
+    // 「開栓する」「スタッフを呼ぶ」のチェックが外れてしまい、案内として
+    // 分かりにくくなる(注文する/提供済にするは明細が残るため元から
+    // 崩れないが、開栓・呼出・会計クリアは卓側の状態が可逆なため、
+    // 専用の達成フラグ(S.progress)で経験済みを覚えておく)。
     var anyItem = S.items.length > 0;
     var anyServed = S.items.some(function (i) { return i.status === 'served'; });
-    var anyCall = S.tables.some(function (t) { return t.isCalling; });
     var steps = [
-      ['開栓する', anyActive],
+      ['開栓する', S.progress.activated],
       ['注文する', anyItem],
       ['提供済にする', anyServed],
-      ['お会計を呼ぶ', anyCall],
-      ['会計クリア', anyServed && !anyCall && !anyActive]
+      ['スタッフを呼ぶ', S.progress.called],
+      ['会計クリア', S.progress.cleared]
     ];
     document.getElementById('scenario').innerHTML = steps.map(function (s, i) {
       return '<div class="step' + (s[1] ? ' done' : '') + '">' +
@@ -1010,20 +1161,13 @@
     var el = document.getElementById('phone-screen');
     var sess = document.getElementById('session-line');
 
-    // 未開栓 → 403 TABLE_NOT_ACTIVE
-    if (t.status !== 'active') {
-      el.innerHTML =
-        '<div class="blocked">' +
-          '<div class="blocked-icon">–</div>' +
-          '<h3>ただいまご利用いただけません</h3>' +
-          '<p>お席のご案内前です。<br>スタッフにお声がけください。</p>' +
-        '</div>';
-      sess.innerHTML = '<span class="k">403</span><span>TABLE_NOT_ACTIVE</span>';
-      return;
-    }
-
     // 会計クリア後の古い画面 → 403 SESSION_EXPIRED
-    if (S.phone.orderId !== t.orderId) {
+    // このタブが過去にセッションを保持していた(orderIdを覚えている)のに、
+    // 卓の現在の状態と食い違う場合は、この画面を優先する。
+    // 「未開栓」より先に判定しないと、会計クリア直後は卓が空席に戻るため、
+    // 本来は「セッション失効(QR再読取)」と案内すべき場面が
+    // 「未開栓(スタッフにお声がけください)」と誤って表示されてしまう。
+    if (S.phone.orderId !== null && S.phone.orderId !== t.orderId) {
       el.innerHTML =
         '<div class="blocked">' +
           '<div class="blocked-icon">↻</div>' +
@@ -1035,13 +1179,30 @@
       return;
     }
 
+    // 未開栓(このタブが一度もセッションを持ったことがない) → 403 TABLE_NOT_ACTIVE
+    if (t.status !== 'active') {
+      el.innerHTML =
+        '<div class="blocked">' +
+          '<div class="blocked-icon">–</div>' +
+          '<h3>ただいまご利用いただけません</h3>' +
+          '<p>お席のご案内前です。<br>スタッフにお声がけください。</p>' +
+        '</div>';
+      sess.innerHTML = '<span class="k">403</span><span>TABLE_NOT_ACTIVE</span>';
+      return;
+    }
+
     sess.innerHTML = '<span class="k">session_token</span><span>' + S.phone.token + '…</span>';
 
     var cartCount = Object.keys(S.cart).reduce(function (a, k) { return a + S.cart[k]; }, 0);
+    var callBtn = t.isCalling
+      ? '<button class="btn" disabled style="margin-left:auto;font-size:11px;color:var(--alarm);border-color:var(--alarm-dim);background:rgba(242,100,92,.08)">' +
+        (CALL_REASON_LABEL[t.callReason] || 'スタッフ') + ' 呼出中…</button>'
+      : '<button class="btn btn-ghost" data-act="opencall" style="margin-left:auto;font-size:11px">🙋 スタッフを呼ぶ</button>';
     var head =
       '<div class="c-head"><div class="c-head-row">' +
         '<span class="c-table">' + t.label + '</span>' +
         '<span class="c-cap">' + t.capacity + '名席</span>' +
+        callBtn +
       '</div></div>';
 
     if (S.phone.view === 'menu') {
@@ -1082,32 +1243,64 @@
       return;
     }
 
-    // 注文履歴
+    // 注文履歴: 準備中を常に上、提供済みは「会計履歴」として下にまとめる
     var items = liveItems(t.orderId);
+    var pendingList = items.filter(function (i) { return i.status !== 'served'; });
+    var servedList = items.filter(function (i) { return i.status === 'served'; });
+
+    function itemRow(i) {
+      var served = i.status === 'served';
+      return '<div class="item"><div class="item-main">' +
+             '<div class="item-name">' + esc(i.name) + ' × ' + i.qty + '</div>' +
+             '<div class="item-price">' + yen(taxIn(i.price) * i.qty) + '</div></div>' +
+             '<span class="chip ' + (served ? 'chip-served' : 'chip-pending') + '">' +
+             (served ? '提供済' : '準備中') + '</span></div>';
+    }
+
     var rows = items.length
-      ? items.map(function (i) {
-          var served = i.status === 'served';
-          return '<div class="item"><div class="item-main">' +
-                 '<div class="item-name">' + esc(i.name) + ' × ' + i.qty + '</div>' +
-                 '<div class="item-price">' + yen(taxIn(i.price) * i.qty) + '</div></div>' +
-                 '<span class="chip ' + (served ? 'chip-served' : 'chip-pending') + '">' +
-                 (served ? '提供済' : '準備中') + '</span></div>';
-        }).join('')
+      ? (pendingList.length
+          ? pendingList.map(itemRow).join('')
+          : '<div class="empty-note" style="border:none;padding:16px 0">準備中のご注文はありません</div>') +
+        (servedList.length
+          ? '<div class="sub-head">提供済み(会計履歴)</div>' + servedList.map(itemRow).join('')
+          : '')
       : '<div class="empty-note" style="border:none;padding:28px 0">まだご注文がありません</div>';
 
     el.innerHTML = head + '<div class="c-body">' + rows +
       (items.length
         ? '<div class="subtotal"><span style="font-size:12.5px;color:var(--text-2)">参考小計 (税込)</span>' +
           '<span class="subtotal-amt">' + yen(subtotal(t.orderId)) + '</span></div>' +
-          '<div class="note">表示は税込金額です。シーシャプランには席料が含まれます。最終的なお会計はレジにて確定します。</div>'
+          '<div class="note">表示金額は、これまでのご注文の合計(税込)です。シーシャプランをご注文の場合、チャージもこの金額に含まれています。最終的なお会計はレジにて確定します。</div>'
         : '') +
       '</div>' +
-      '<div class="c-foot" style="display:flex;gap:8px">' +
+      '<div class="c-foot">' +
         '<button class="wide" data-act="tomenu">追加注文</button>' +
-        (t.isCalling
-          ? '<button class="wide" disabled>お呼びしました</button>'
-          : '<button class="wide alarm" data-act="call">お会計呼出</button>') +
       '</div>';
+  }
+
+  function renderCallBanner() {
+    var el = document.getElementById('call-banner');
+    if (!el) return;
+    var calling = S.tables.filter(function (t) { return t.isCalling; });
+    if (!calling.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+
+    // 待ち時間が長い卓を上に
+    calling = calling.slice().sort(function (a, b) { return (a.callAt || 0) - (b.callAt || 0); });
+
+    el.style.display = 'block';
+    el.innerHTML = '<div class="call-banner-head">🔔 呼び出し中 (' + calling.length + '件)</div>' +
+      '<div class="call-banner-list">' + calling.map(function (t) {
+        var elapsedMs = Date.now() - (t.callAt || Date.now());
+        var lvl = elapsedMs >= 180000 ? 'urgent' : (elapsedMs >= 60000 ? 'warn' : '');
+        return '<div class="callrow' + (lvl ? ' callrow-' + lvl : '') + '">' +
+          '<span class="callrow-table">' + t.label + '</span>' +
+          '<span class="callrow-reason">' + esc(CALL_REASON_LABEL[t.callReason] || 'スタッフ対応') + '</span>' +
+          '<span class="callrow-time">' + fmtElapsed(elapsedMs) + '経過</span>' +
+          (t.callReason === 'checkout'
+            ? '<button class="btn btn-primary" data-act="table" data-id="' + t.id + '">確認する</button>'
+            : '<button class="btn" data-act="ackcall" data-id="' + t.id + '">対応しました</button>') +
+        '</div>';
+      }).join('') + '</div>';
   }
 
   function renderFloor() {
@@ -1124,7 +1317,9 @@
       var pend = t.orderId
         ? S.items.filter(function (i) { return i.orderId === t.orderId && i.status === 'pending'; }).length
         : 0;
-      var state = t.isCalling ? '呼出中' : (t.status === 'active' ? '使用中' : '空席');
+      var state = t.isCalling
+        ? (CALL_REASON_LABEL[t.callReason] || '呼出中')
+        : (t.status === 'active' ? '使用中' : '空席');
 
       var inner;
       if (compact) {
@@ -1187,6 +1382,38 @@
     }).join('') + '</div>';
   }
 
+  // ------------------------------------------------ 空席状況(PUB-001) ----
+  // 認証・セッションともに不要。tables.status からのみ導出する([02]2.7節)。
+  // is_calling 等の運用情報や金額はここでは一切参照しない。
+  function vacancyRowsHtml() {
+    var availableCount = S.tables.filter(function (t) { return t.status !== 'active'; }).length;
+    var rows = S.tables.map(function (t) {
+      var occupied = t.status === 'active';
+      return '<div class="vrow"><span class="vrow-label">' + esc(t.label) + '</span>' +
+             '<span class="vrow-cap">' + t.capacity + '名席</span>' +
+             '<span class="vrow-state ' + (occupied ? 'occ' : 'free') + '">' +
+             (occupied ? 'ご利用中' : '空いています') + '</span></div>';
+    }).join('');
+    return {
+      summary: '現在 空いている卓: ' + availableCount + ' / ' + S.tables.length + ' 卓',
+      rows: rows
+    };
+  }
+
+  function renderVacancyStandalone() {
+    var root = document.getElementById('vacancy-standalone');
+    if (!root) return;
+    var v = vacancyRowsHtml();
+    root.innerHTML =
+      '<div class="vacancy-card">' +
+        '<div class="vacancy-title">ひふみ 空席状況</div>' +
+        '<div class="vacancy-summary">' + v.summary + '</div>' +
+        '<div class="vacancy-list">' + v.rows + '</div>' +
+        '<div class="vacancy-foot">20秒ごとに自動更新されます<br>' +
+        '(プロトタイプにつき、この画面は他のタブ・卓ダッシュボードとは状態を共有しません)</div>' +
+      '</div>';
+  }
+
   // ------------------------------------------------------ modal ----
   function renderModal() {
     var root = document.getElementById('modal-root');
@@ -1219,12 +1446,41 @@
       foot = '<button class="wide" data-act="close">戻る</button>' +
              '<button class="wide primary" data-act="submit">この内容で注文する</button>';
 
+    } else if (m.type === 'callstaff') {
+      title = 'スタッフを呼ぶ';
+      body = '<div class="note" style="margin-top:0">用件を選ぶと、すぐにスタッフへ通知されます。会計以外は会話なしで対応できる内容です。</div>' +
+        '<div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">' +
+        CALL_REASONS.map(function (r) {
+          return '<button class="wide" data-act="docall" data-reason="' + r.id + '" style="justify-content:flex-start;gap:10px">' +
+                 '<span style="font-size:16px">' + r.icon + '</span><span>' + esc(r.label) + '</span></button>';
+        }).join('') +
+        '</div>';
+      foot = '<button class="wide" data-act="close">閉じる</button>';
+
+    } else if (m.type === 'vacancy') {
+      title = '空席状況(外部公開プレビュー)';
+      var vac = vacancyRowsHtml();
+      body = '<div class="vacancy-summary" style="border:none;padding-bottom:0;margin-bottom:10px">' +
+               vac.summary + '</div>' +
+             '<div class="vacancy-list">' + vac.rows + '</div>' +
+             '<div class="note" style="margin-top:14px">' +
+               'これは <code>/vacancy</code> の中身をこの画面の中でそのまま再現したものです。' +
+               'ログイン・QR読取のいずれも不要で、卓ラベル・定員・空席かどうかだけを表示します。' +
+               '呼出中かどうかや金額など、営業に関わる情報は含みません。' +
+             '</div>';
+      foot = '<button class="wide" data-act="close">閉じる</button>' +
+             '<a class="wide primary" href="?vacancy=1" target="_blank" ' +
+             'style="text-decoration:none;text-align:center">単独ページで開く</a>';
+
     } else if (m.type === 'soldout') {
-      title = '品切れ管理';
-      body = S.products.map(function (p) {
+      title = '品切れ・価格管理';
+      body = '<div class="note" style="margin-top:0">価格が変動する商品(GUESTジン等)は、ここで当日の価格に更新できます。変更はすぐに客側画面に反映されます。</div>' +
+        S.products.map(function (p) {
         return '<div class="opt-row"><div class="opt-main">' +
           '<div class="opt-name">' + esc(p.name) + '</div>' +
-          '<div class="opt-sub">' + p.cat + ' · ' + yen(taxIn(p.price)) + '</div></div>' +
+          '<div class="opt-sub">' + p.cat + '</div></div>' +
+          '<input type="number" class="price-input" data-price-id="' + p.id + '" value="' + p.price + '" ' +
+          'min="0" step="50" aria-label="' + esc(p.name) + 'の価格(税込)">' +
           '<button class="toggle" data-act="sold" data-id="' + p.id + '" ' +
           'aria-pressed="' + p.soldOut + '" aria-label="' + esc(p.name) + 'を品切れにする">' +
           '<i></i></button></div>';
@@ -1270,7 +1526,11 @@
             '<div class="opt-sub">order_id ' + t.orderId + ' · ' + t.token + '…</div></div></div>' +
           (t.isCalling
             ? '<div class="note" style="border-color:var(--alarm-dim);color:var(--alarm)">' +
-              'お客さまが会計を希望されています。</div>'
+              'お客さまが「' + esc(CALL_REASON_LABEL[t.callReason] || 'スタッフ対応') + '」を希望されています。' +
+              (t.callReason === 'checkout'
+                ? ''
+                : '<div style="margin-top:8px"><button class="btn" data-act="ackcall" data-id="' + t.id + '">対応しました(呼出を解除)</button></div>') +
+              '</div>'
             : '') +
           (pendLeft
             ? '<div class="warn">まだ提供していない注文が ' + pendLeft + ' 件あります。' +
@@ -1299,6 +1559,7 @@
     renderScenario();
     renderQrPicker();
     renderPhone();
+    renderCallBanner();
     renderFloor();
     renderPending();
     renderModal();
@@ -1326,7 +1587,13 @@
       case 'submit': submitOrder(); break;
       case 'tohistory': S.phone.view = 'history'; render(); break;
       case 'tomenu':    S.phone.view = 'menu'; render(); break;
-      case 'call':      callStaff(); break;
+      case 'opencall':  S.modal = { type: 'callstaff' }; render(); break;
+      case 'docall':
+        var reason = el.getAttribute('data-reason');
+        S.modal = null;
+        callStaff(reason);
+        break;
+      case 'ackcall':   clearCall(id); break;
       case 'rescan':    syncPhone(); render(); toast('QRを読み取りました'); break;
       case 'table':     S.modal = { type: 'table', id: id }; render(); break;
       case 'open':      S.modal = null; activate(id); break;
@@ -1341,13 +1608,17 @@
       case 'addcustom':
         var tid = +document.getElementById('cu-table').value;
         var nm = document.getElementById('cu-name').value.trim();
-        var pr = +document.getElementById('cu-price').value;
+        var prRaw = document.getElementById('cu-price').value.trim();
+        var pr = Number(prRaw);
         if (!nm) { toast('商品名を入力してください'); return; }
+        if (prRaw === '' || !Number.isInteger(pr) || pr < 0) {
+          toast('価格は0以上の整数で入力してください'); return;
+        }
         var tt = tableById(tid);
         seq.item++;
         S.items.push({
           id: seq.item, orderId: tt.orderId, tableLabel: tt.label,
-          name: nm, price: pr || 0, qty: 1, status: 'pending', at: now(), recentlyServed: false
+          name: nm, price: pr, qty: 1, status: 'pending', at: now(), recentlyServed: false
         });
         S.modal = null; render(); toast(tt.label + ' に追加しました'); break;
       case 'close':  S.modal = null; render(); break;
@@ -1362,6 +1633,9 @@
   document.getElementById('btn-custom').addEventListener('click', function () {
     S.modal = { type: 'custom' }; render();
   });
+  document.getElementById('btn-vacancy').addEventListener('click', function () {
+    S.modal = { type: 'vacancy' }; render();
+  });
   document.getElementById('btn-reset').addEventListener('click', function () {
     reset(); render(); toast('最初の状態に戻しました');
   });
@@ -1372,6 +1646,78 @@
   });
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && S.modal) { S.modal = null; render(); }
+  });
+
+  // ------------------------------------------------ ポーリング ----
+  // 本番では4秒ごとにAPIを取得する。画面が見えていない間(タブが非アクティブ、
+  // 画面ロック、他アプリへ切替)は通信を止め、復帰時に1回だけ即取得してから
+  // 通常間隔に戻す。プロトタイプでは通信の代わりに再描画で挙動を再現する。
+  var POLL_MS = 4000;
+  var pollTimer = null;
+  var pollCount = 0;
+
+  function pollOnce() {
+    pollCount++;
+    // モーダルを開いている間は入力中の値を消さないよう再描画しない
+    if (!S.modal) render();
+    renderPollStatus();
+  }
+
+  function startPolling() {
+    if (pollTimer) return;
+    pollTimer = setInterval(pollOnce, POLL_MS);
+    renderPollStatus();
+  }
+
+  function stopPolling() {
+    if (!pollTimer) return;
+    clearInterval(pollTimer);
+    pollTimer = null;
+    renderPollStatus();
+  }
+
+  function renderPollStatus() {
+    var el = document.getElementById('poll-status');
+    if (!el) return;
+    el.innerHTML = pollTimer
+      ? '<span class="poll-dot on"></span><span>自動更新 稼働中 — ' + (POLL_MS / 1000) +
+        '秒ごと / 通信 ' + pollCount + '回</span>'
+      : '<span class="poll-dot off"></span><span>自動更新 停止中(画面が非表示のため) — 通信 ' +
+        pollCount + '回</span>';
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    if (IS_VACANCY_URL) return;   // 空席状況の単独ページには無関係
+    if (document.hidden) {
+      stopPolling();
+    } else {
+      pollOnce();      // 復帰時に1回だけ即取得
+      startPolling();
+    }
+  });
+
+  if (!IS_VACANCY_URL) startPolling();
+
+  // 品切れ・価格管理モーダルの価格入力(change = 確定時のみ。入力中の再描画を避ける)
+  // 税込・0以上の整数のみを受け付ける([04]3.11: 負値・非整数は400)。
+  // 空欄でのblur(うっかり全消し)は「0円で確定」ではなく、直前の値へ戻す。
+  document.addEventListener('change', function (e) {
+    var el = e.target.closest('[data-price-id]');
+    if (!el) return;
+    var pid = +el.getAttribute('data-price-id');
+    var p = S.products.filter(function (x) { return x.id === pid; })[0];
+    if (!p) return;
+    var raw = el.value.trim();
+    var v = Number(raw);
+    var valid = raw !== '' && Number.isInteger(v) && v >= 0;
+    if (valid) {
+      p.price = v;
+      render();
+      toast(p.name + ' の価格を更新しました');
+    } else {
+      render();   // 再描画でinputの表示を直前の価格に戻す
+      toast('価格は0以上の整数で入力してください(元の価格のままです)');
+    }
   });
 
   Array.prototype.forEach.call(document.querySelectorAll('.viewtabs button'), function (b) {
@@ -1406,9 +1752,35 @@
     return true;
   }
 
+  // ------------------------------------------------ 空席状況(単独) ----
+  // ?vacancy=1 で開いたときは、認証不要の公開ページ(PUB-001)だけを表示する。
+  // 実際の公開APIは20秒間隔でポーリングする([01]4章)ため、ここでも同じ
+  // 間隔で再描画する。
+  function applyVacancyMode() {
+    if (!IS_VACANCY_URL) return false;
+
+    document.body.classList.add('vacancy-mode');
+    renderVacancyStandalone();
+
+    // [03]4.1節: 画面が非表示の間はポーリングを止め、復帰時に1回だけ即取得する。
+    var vTimer = setInterval(renderVacancyStandalone, 20000);
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) {
+        clearInterval(vTimer);
+        vTimer = null;
+      } else {
+        renderVacancyStandalone();
+        if (!vTimer) vTimer = setInterval(renderVacancyStandalone, 20000);
+      }
+    });
+    return true;
+  }
+
   reset();
-  if (!applyUrlMode()) {
-    render();
+  if (!applyVacancyMode()) {
+    if (!applyUrlMode()) {
+      render();
+    }
   }
 })();
 </script>
