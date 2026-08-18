@@ -40,6 +40,11 @@ CREATE TABLE staff (
 -- 税抜で保持して表示時に税込へ換算すると端数処理で printed menu と1円ずれる
 -- ケースがあるため(例: 税込1,000円は floor(b*1.1) では表現できない)。
 -- 表示はこの値をそのまま出す。税額の内訳計算は本システムの対象外(レジ側の責務)。
+--
+-- 【価格変動商品の扱い】GUESTジン等、仕入れにより価格が変わる商品は、
+-- 都度の手入力ではなく price を直接UPDATEして当日の価格に固定する運用とする
+-- (スタッフ用商品管理画面から編集する。手入力(is_custom)は本当にメニュー外の
+-- 一品や口頭注文にのみ使う)。
 CREATE TABLE products (
   id          SERIAL PRIMARY KEY,
   name        VARCHAR(100)  NOT NULL,
@@ -56,6 +61,11 @@ CREATE TABLE products (
 -- ---------------------------------------------------------------------
 
 -- 伝票。開栓のたびに1レコード作成され、session_tokenが再発行される。
+--
+-- 【呼び出し理由について】is_calling は「呼び出し中かどうか」のみを保持し、
+-- 理由(炭の交換/ドリンクのおかわり/お会計/その他)は call_reason に持つ。
+-- 呼び出しの発生・解消そのものの履歴は残らないため、集計が要る場合は
+-- 下記 call_events を参照する。
 CREATE TABLE orders (
   id                SERIAL PRIMARY KEY,
   table_id          INTEGER     NOT NULL REFERENCES tables(id),
@@ -64,6 +74,7 @@ CREATE TABLE orders (
                     CHECK (status IN ('Active','Deactivated')),
   checkout_staff_id INTEGER     REFERENCES staff(id),  -- 日次バッチ由来のクリアはNULLのまま
   is_calling        BOOLEAN     NOT NULL DEFAULT false,
+  call_reason       VARCHAR(20) CHECK (call_reason IN ('charcoal','drink','checkout','other')),
   created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
   closed_at         TIMESTAMPTZ
 );
@@ -96,6 +107,21 @@ CREATE TABLE order_items (
 
 CREATE INDEX order_items_order_status_idx ON order_items (order_id, status);
 
+-- 呼び出しの簡易ログ。「炭の交換が多い時間帯」等の後追い集計と、
+-- 呼び出しへの応答時間の把握のためだけの最小限のテーブル。
+-- 呼び出し発生時(callStaff)に1行INSERTし、解消時(対応しました/会計クリア)に
+-- resolved_at をUPDATEする。個別のUI・APIは持たず、必要なときにSQLで
+-- 集計する運用を想定する(例: 理由別件数、平均対応時間)。
+CREATE TABLE call_events (
+  id          SERIAL PRIMARY KEY,
+  order_id    INTEGER      NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  reason      VARCHAR(20)  NOT NULL CHECK (reason IN ('charcoal','drink','checkout','other')),
+  called_at   TIMESTAMPTZ  NOT NULL DEFAULT now(),
+  resolved_at TIMESTAMPTZ
+);
+
+CREATE INDEX call_events_order_idx ON call_events (order_id);
+
 
 -- ---------------------------------------------------------------------
 -- 行レベルセキュリティ(RLS)
@@ -109,3 +135,4 @@ ALTER TABLE staff       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE call_events ENABLE ROW LEVEL SECURITY;
